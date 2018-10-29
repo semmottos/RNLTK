@@ -1,0 +1,14 @@
+#lang racket
+
+(define (hashtable-entries ht)
+  (values (list->vector (hash-keys ht))
+          (list->vector (hash-values ht))))
+
+(let ((h (make-hash)))
+  (hash-set! h 1 'one)
+
+  (hash-set! h 2 'two)
+
+  (hash-set! h 3 'three)
+
+  (hashtable-entries h))  

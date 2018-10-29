@@ -1,4 +1,4 @@
-#lang racket
+#!r6rs
 
 ;;; filename: test-dfsa.scm
 ;;;
@@ -31,9 +31,10 @@
 ;; 
 ;; TODO:
 
-(require "dfsa.rkt"
-        "sequences.rkt"
-        "r6rs-compatibility.rkt")
+(import (rnrs)
+        (rnrs base)
+        (nltk dfsa)
+        (nltk sequences))
 
 
 
@@ -43,25 +44,25 @@
     (let ([goal-trans         (reverse-transitions automaton)]
           [state-emit-symbols (state-symbol automaton)]
           [trans              (dfsa-transitions automaton)]
-          [str-res (make-hash)])
+          [str-res (make-hashtable equal-hash equal?)])
       ; merge all absolutely final states into one
       (let ([absolute-final-states (filter (lambda (el)
-                                             (if (null? (hash-ref state-emit-symbols el '())) #t #f))
+                                             (if (null? (hashtable-ref state-emit-symbols el '())) #t #f))
                                            (dfsa-finalstates automaton))])
         (dfsa-merge-states2! automaton
                              (car absolute-final-states)
                              (do ((x (cdr absolute-final-states) (cdr x))
-                                  (res '() (append res (hash-ref goal-trans (car x) '()))))
+                                  (res '() (append res (hashtable-ref goal-trans (car x) '()))))
                                ((null? x) res))
                              (cdr absolute-final-states)
                              '())
         (for-each ; change tranisitions to point to the new final state
          (lambda (state)
-           (hash-set! goal-trans (car absolute-final-states)
-                           (append (hash-ref goal-trans (car absolute-final-states) '())
-                                   (hash-ref goal-trans state '())))
-           (hash-remove! goal-trans state)
-           (hash-remove! state-emit-symbols state))
+           (hashtable-set! goal-trans (car absolute-final-states)
+                           (append (hashtable-ref goal-trans (car absolute-final-states) '())
+                                   (hashtable-ref goal-trans state '())))
+           (hashtable-delete! goal-trans state)
+           (hashtable-delete! state-emit-symbols state))
          (cdr absolute-final-states))))
     automaton))
 
@@ -71,25 +72,25 @@
     (let ([goal-trans         (reverse-transitions automaton)]
           [state-emit-symbols (state-symbol automaton)]
           [trans              (dfsa-transitions automaton)]
-          [str-res (make-hash)])
+          [str-res (make-hashtable equal-hash equal?)])
       ; merge all absolutely final states into one
       (let ([absolute-final-states (filter (lambda (el)
-                                             (if (null? (hash-ref state-emit-symbols el '())) #t #f))
+                                             (if (null? (hashtable-ref state-emit-symbols el '())) #t #f))
                                            (dfsa-finalstates automaton))])
         (dfsa-merge-states2! automaton
                              (car absolute-final-states)
                              (do ((x (cdr absolute-final-states) (cdr x))
-                                  (res '() (append res (hash-ref goal-trans (car x) '()))))
+                                  (res '() (append res (hashtable-ref goal-trans (car x) '()))))
                                ((null? x) res))
                              (cdr absolute-final-states)
                              '())
         (for-each ; change tranisitions to point to the new final state
          (lambda (state)
-           (hash-set! goal-trans (car absolute-final-states)
-                           (append (hash-ref goal-trans (car absolute-final-states) '())
-                                   (hash-ref goal-trans state '())))
-           (hash-remove! goal-trans state)
-           (hash-remove! state-emit-symbols state))
+           (hashtable-set! goal-trans (car absolute-final-states)
+                           (append (hashtable-ref goal-trans (car absolute-final-states) '())
+                                   (hashtable-ref goal-trans state '())))
+           (hashtable-delete! goal-trans state)
+           (hashtable-delete! state-emit-symbols state))
          (cdr absolute-final-states))
         (car absolute-final-states)))))
 
@@ -99,7 +100,7 @@
     (let ([goal-trans         (reverse-transitions automaton)]
           [state-emit-symbols (state-symbol automaton)]
           [trans              (dfsa-transitions automaton)]
-          [str-res (make-hash)])
+          [str-res (make-hashtable equal-hash equal?)])
       ; merge all absolutely final states into one
       (let ([absolute-final-state (merge-absolute-final-states! automaton)])
         ; start from the absolutely final state and try to merge states
@@ -108,19 +109,19 @@
             (let* ([current-final   (car agenda)]
                    [entering-states (remove-duplicates (map (lambda (el)
                                                               (vector-ref el 0))
-                                                            (hash-ref goal-trans current-final '())))])
-              (hash-clear! str-res)
+                                                            (hashtable-ref goal-trans current-final '())))])
+              (hashtable-clear! str-res)
               (for-each
                (lambda (elem)
                  ; str-res has strings as keys, list of states from to current-final as value
-                 (let ([symbs (hash-ref state-emit-symbols elem '())])
-                   (hash-set! str-res symbs (append (hash-ref str-res symbs '())
+                 (let ([symbs (hashtable-ref state-emit-symbols elem '())])
+                   (hashtable-set! str-res symbs (append (hashtable-ref str-res symbs '())
                                                          (list elem)))))
                entering-states)
               ;
-              (for-each ; find the str-res entry with more than one val
+              (vector-for-each ; find the str-res entry with more than one val
                (lambda (key)
-                 (let ([val (hash-ref str-res key '())])
+                 (let ([val (hashtable-ref str-res key '())])
                    (when (> (length val) 1)
                      (let ([finals    (filter (lambda (el) (if (dfsa-is-final-state? automaton el) #t #f)) val)]
                            [nonfinals (filter (lambda (el) (if (dfsa-is-final-state? automaton el) #f #t)) val)])
@@ -131,27 +132,27 @@
                             ; make them all transite into the first
                             (dfsa-merge-states2! automaton (car statelist)
                                                  (do ((x (cdr statelist) (cdr x))
-                                                      (res '() (append res (hash-ref goal-trans (car x) '()))))
+                                                      (res '() (append res (hashtable-ref goal-trans (car x) '()))))
                                                    ((null? x) res))
                                                  (cdr statelist)
                                                  (filter (lambda (elem)
                                                            (if (member (vector-ref elem 0) (cdr statelist)) #t #f))
-                                                         (hash-ref goal-trans (car agenda) '())))
+                                                         (hashtable-ref goal-trans (car agenda) '())))
                             (display "Merged states: ")
                             (display statelist)(newline)
                             (for-each
                              (lambda (state) ; change goal-trans
-                               (hash-set! goal-trans (car statelist)
-                                               (append (hash-ref goal-trans (car statelist) '())
-                                                       (hash-ref goal-trans state '())))
-                               (hash-remove! goal-trans state)
-                               (hash-remove! state-emit-symbols state))
+                               (hashtable-set! goal-trans (car statelist)
+                                               (append (hashtable-ref goal-trans (car statelist) '())
+                                                       (hashtable-ref goal-trans state '())))
+                               (hashtable-delete! goal-trans state)
+                               (hashtable-delete! state-emit-symbols state))
                              (cdr statelist))
                             ; add first of statelist to agenda
                             (unless (member (car statelist) agenda)
                               (set! agenda (append agenda (list (car statelist)))))))
                         (list finals nonfinals))))))
-               (hash-keys str-res))
+               (hashtable-keys str-res))
               (loop-agenda (cdr agenda)))))))
     automaton))
 
@@ -163,22 +164,22 @@
     ;(display "state-list: ")(display state-list)(newline)
     ;(display "remtrans: ")(display remtrans)(newline)
     ; remove from list of final states
-    (set-dfsa-finalstates! aut (filter (lambda (el)
+    (dfsa-finalstates-set! aut (filter (lambda (el)
                                          (if (member el state-list) #f #t))
                                        (dfsa-finalstates aut)))
     ; remove from list of states
-    (set-dfsa-states! aut (filter (lambda (el)
+    (dfsa-states-set! aut (filter (lambda (el)
                                     (if (member el state-list) #f #t))
                                   (dfsa-states aut)))
     ; change tranisitions to point to the new final state
     (let ([trans (dfsa-transitions aut)])
       (for-each
        (lambda (transition)
-         (hash-set! trans transition to-state))
+         (hashtable-set! trans transition to-state))
        trans-list)
       (for-each
        (lambda (transition)
-         (hash-remove! trans transition))
+         (hashtable-delete! trans transition))
        remtrans))))
 
 (define test1

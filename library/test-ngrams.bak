@@ -1,4 +1,4 @@
-#lang racket
+#!r6rs
 
 ;;; filename: test-ngrams.scm
 ;;;
@@ -25,14 +25,15 @@
 ;;; Place, Suite 330, Boston, MA 02111-1307 USA
 ;;;
 ;;; Author: Damir Ćavar <dcavar@unizd.hr>
-;; 
+;;
 ;;
 ;; Commentary:
 ;; 
 ;; TODO:
 
-(require "ngrams.rkt"
-         "r6rs-compatibility.rkt")
+(import (rnrs)
+        (rnrs base)
+        (nltk ngrams))
 
 
 (define test1

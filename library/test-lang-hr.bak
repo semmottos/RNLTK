@@ -1,4 +1,4 @@
-#lang racket
+#!r6rs
 
 ;;; filename: test-lang-hr.scm
 ;;;
@@ -34,18 +34,19 @@
 ;; TODO:
 
 
-(require "lang-hr.rkt"
-         "r6rs-compatibility.rkt")
+(import (rnrs)
+        (rnrs base)
+        (nltk lang-hr))
 
 
 (define test1
   (lambda ()
-    (for-each
+    (vector-for-each
      (lambda (key)
        (display key)(display " ")
-       (display (hash-ref stopwords-hash-hr key 0))
+       (display (hashtable-ref stopwords-hash-hr key 0))
        (newline))
-     (hash-keys stopwords-hash-hr))))
+     (hashtable-keys stopwords-hash-hr))))
 
 
 (display "test1: returns hashtable with stopwords for Croatian")(newline)

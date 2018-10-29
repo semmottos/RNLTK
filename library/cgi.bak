@@ -1,4 +1,4 @@
-#lang racket
+#!r6rs
 
 ;;; Time-stamp: <2010-05-30 18:11:00 dcavar>
 ;;; encoding: UTF-8
@@ -28,12 +28,22 @@
 ;; TODO:
 ;; - 
 
-(provide query-decode
+
+(library
+ (nltk cgi)
+ (export query-decode
          request-method
          query-string
          content-length
          parse-query-string)
-(require "sequences.rkt")
+ (import (rnrs)
+         (rnrs base)
+         (rnrs unicode)
+         (rnrs io ports)
+         (rnrs hashtables)
+         (rnrs control)
+         (only (srfi :98) get-environment-variable)
+         (only (nltk sequences) str-split))
  
  ;; a variant of decode procedure in
  ;; the Mosh distribution of cgi.ss
@@ -115,14 +125,15 @@
  
  (define parse-query-string
    (lambda (qs)
-;     (let ([qsh (make-hashtable string-hash string=?)])
-     (let ([qsh (make-hash)])
+     (let ([qsh (make-hashtable string-hash string=?)])
        (cond [(string? qs)
               (for-each
                (lambda (token)
                  (let ([stokens (str-split token #\=)])
                    (cond [(= (length stokens) 2)
-                          (hash-set! qsh (list-ref stokens 0) (list-ref stokens 1))])))
+                          (hashtable-set! qsh (list-ref stokens 0) (list-ref stokens 1))])))
                (str-split qs #\&))])
        qsh)))
  
+
+ )

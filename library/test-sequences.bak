@@ -1,4 +1,4 @@
-#lang racket
+#!r6rs
 
 ;;; filename: test-sequences.scm
 ;;;
@@ -33,7 +33,10 @@
 ;; 
 ;; TODO:
 
-(require "sequences.rkt")
+
+(import (rnrs)
+        (rnrs base)
+        (nltk sequences))
 
 
 (define test1

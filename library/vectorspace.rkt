@@ -37,11 +37,11 @@
 (provide make-vs
          vs?
          vs-columnlabels
-         vs-columnlabels-set!
+         set-vs-columnlabels!
          vs-rowlabels
-         vs-rowlabels-set!
+         set-vs-rowlabels!
          vs-cells
-         vs-cells-set!
+         set-vs-cells!
          relativize-vectorspace
          euclidean-distance
          dot-product
@@ -49,19 +49,22 @@
          cosine-similarity
          vectorspace->centroid
          ngrams->vectorspace)
-(require "sequences.rkt")
+
+(require "sequences.rkt"
+         "r6rs-compatibility.rkt")
  
  
- (define-record-type vs
-   (fields (mutable columnlabels vs-columnlabels vs-columnlabels-set!)
-           (mutable rowlabels    vs-rowlabels    vs-rowlabels-set!)
-           (mutable cells        vs-cells        vs-cells-set!))
-   (protocol
-    (lambda (p)
-      (lambda ()
-        (p '() '() (make-hashtable equal-hash equal?))))))
- 
- 
+; (define-record-type vs
+;   (fields (mutable columnlabels vs-columnlabels vs-columnlabels-set!)
+;           (mutable rowlabels    vs-rowlabels    vs-rowlabels-set!)
+;           (mutable cells        vs-cells        vs-cells-set!))
+;   (protocol
+;    (lambda (p)
+;      (lambda ()
+;        (p '() '() (make-hash))))))
+
+(struct vs (columnlabels rowlabels cells) #:mutable)
+(define (make-vs) (vs '() '() (make-hash)))
  
  (define euclidean-distance
    (lambda (v1 v2)
@@ -110,19 +113,19 @@
  
  (define ngrams->vectorspace
    (lambda (ngram-models)
-     (let ([all-tokens (make-hashtable equal-hash equal?)])
+     (let ([all-tokens (make-hash)])
        (for-each
         (lambda (ht)
-          (let-values ([(keys vals) (hashtable-entries ht)])
+          (let-values ([(keys vals) (hash-entries ht)])
             (vector-for-each
              (lambda (key val)
-               (hashtable-set! all-tokens key 0))
+               (hash-set! all-tokens key 0))
              keys vals)))
         ngram-models)
-       (let-values ([(keys vals) (hashtable-entries all-tokens)]) ; sr = keys vals
+       (let-values ([(keys vals) (hash-entries all-tokens)]) ; sr = keys vals
          (map (lambda (language-model)
                 (vector-map (lambda (token)
-                              (hashtable-ref language-model token 0))
+                              (hash-ref language-model token 0))
                             keys))
               ngram-models)))))
  

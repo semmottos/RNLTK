@@ -51,16 +51,17 @@
          token-sequence->ngrams
          ngram-counts)
 
-(require vectorspace
-         sequences)
+(require "vectorspace.rkt"
+         "sequences.rkt"
+         "r6rs-compatibility.rkt")
  
  ; TODO
  ; serialization and deserialization procedures
  
  (define ngrams->bigrams
    (lambda (ngrams)
-     (let ([bigrams (make-hashtable equal-hash equal?)])
-       (let-values (((keyv valuev) (hashtable-entries ngrams)))
+     (let ([bigrams (make-hash)])
+       (let-values (((keyv valuev) (hash-entries ngrams)))
          (cond [(> (vector-length keyv) 0)
                 (cond [(= (vector-length (vector-ref keyv 0)) 2)
                        ngrams]
@@ -73,8 +74,8 @@
                                (let ([bigram (vector
                                               (vector-ref key index)
                                               (vector-ref key (+ index 1)))])
-                                 (hashtable-set! bigrams bigram
-                                                 (+ (hashtable-ref bigrams bigram 0) value))))
+                                 (hash-set! bigrams bigram
+                                                 (+ (hash-ref bigrams bigram 0) value))))
                              (enum-list (- (vector-length key) 1))))
                           keyv valuev))])])
          ; repair bigram statistics here?
@@ -86,8 +87,8 @@
    (case-lambda 
      [(ngrams filter-tokens) (filter-ngrams ngrams filter-tokens #t)]
      [(ngrams filter-tokens remove)
-      (let ([new-ngrams (make-hashtable equal-hash equal?)])
-        (let-values (((keyv valuev) (hashtable-entries ngrams)))
+      (let ([new-ngrams (make-hash)])
+        (let-values (((keyv valuev) (hash-entries ngrams)))
           ; check for length ngrams > 0
           (cond [(> (vector-length keyv) 0)
                  (vector-for-each
@@ -96,7 +97,7 @@
                              (cond [(null? tokens) remove]
                                    [(member (car tokens) filter-tokens) (not remove)]
                                    [else (loop (cdr tokens))]))
-                           (hashtable-set! new-ngrams key value)]))
+                           (hash-set! new-ngrams key value)]))
                   keyv valuev)]))
         new-ngrams)]))
  
@@ -105,14 +106,14 @@
    (case-lambda 
      [(ngrams filter-tokens) (filter-ngrams ngrams filter-tokens #t)]
      [(ngrams filter-tokens remove)
-      (let-values (((keyv valuev) (hashtable-entries ngrams)))
+      (let-values (((keyv valuev) (hash-entries ngrams)))
         (vector-for-each
          (lambda (key value)
            (cond [(let loop ((tokens (vector->list key)))
                     (cond [(null? tokens) (not remove)]
                           [(member (car tokens) filter-tokens) remove]
                           [else (loop (cdr tokens))]))
-                  (hashtable-delete! ngrams key value)]))
+                  (hash-remove! ngrams key value)]))
          keyv valuev)
         ngrams)]))
  
@@ -122,8 +123,8 @@
      [(ngrams filter-tokens) (filter-ngrams ngrams filter-tokens 0)]
      [(ngrams filter-tokens pos) (filter-ngrams ngrams filter-tokens pos #t)]
      [(ngrams filter-tokens pos remove)
-      (let ([new-ngrams (make-hashtable equal-hash equal?)])
-        (let-values (((keyv valuev) (hashtable-entries ngrams)))
+      (let ([new-ngrams (make-hash)])
+        (let-values (((keyv valuev) (hash-entries ngrams)))
           ; check for length ngrams > 0
           (cond [(> (vector-length keyv) 0)
                  (vector-for-each
@@ -133,7 +134,7 @@
                            (cond [(if (member (vector-ref key pos) filter-tokens)
                                       (not remove)
                                       remove)
-                                  (hashtable-set! new-ngrams key value)])]))
+                                  (hash-set! new-ngrams key value)])]))
                   keyv valuev)]))
         new-ngrams)]))
   
@@ -142,13 +143,13 @@
    (case-lambda 
      [(ngrams threshold) (filter-ngrams ngrams threshold #t)]
      [(ngrams threshold larger)
-      (let ([new-ngrams (make-hashtable equal-hash equal?)]
+      (let ([new-ngrams (make-hash)]
             [comparison (if larger > <)])
-        (let-values (((keyv valuev) (hashtable-entries ngrams)))
+        (let-values (((keyv valuev) (hash-entries ngrams)))
           (vector-for-each
            (lambda (key value)
              (cond [(comparison value threshold)
-                    (hashtable-set! new-ngrams key value)]))
+                    (hash-set! new-ngrams key value)]))
            keyv valuev))
         new-ngrams)]))
  
@@ -157,11 +158,11 @@
      [(ngrams threshold) (filter-ngrams ngrams threshold #t)]
      [(ngrams threshold larger)
       (let ([comparison (if larger > <)])
-        (let-values (((keyv valuev) (hashtable-entries ngrams)))
+        (let-values (((keyv valuev) (hash-entries ngrams)))
           (vector-for-each
            (lambda (key value)
              (cond [(not (comparison value threshold))
-                    (hashtable-delete! ngrams key value)]))
+                    (hash-remove! ngrams key value)]))
            keyv valuev))
         ngrams)]))
  
@@ -186,15 +187,15 @@
      [(ngrams graph-type line-thickness) (ngrams->dot ngrams 'digraph #f #f)]
      [(ngrams graph-type line-thickness node-size)
       ; TODO display line-thickness and node-size
-      (call-with-string-output-port
+      (call-with-output-string
        (lambda (p)
          (let-values ([(label connector) (if (eq? graph-type 'digraph)
                                              (values "digraph" " -> ")
                                              (values "graph" " -- "))])
            (display label p)
            (display " G {" p)(newline p)
-           (let ((bkeysv (hashtable-keys ngrams)))
-             (vector-for-each 
+           (let ((bkeysv (hash-keys ngrams)))
+             (for-each 
               (lambda (bkey)
                 (let ([tokens (vector->list bkey)])
                   (display "\t" p)
@@ -227,7 +228,7 @@
                                         (if (eq? sort-field 'frequency)
                                             #t
                                             #f))])])
-        (call-with-string-output-port
+        (call-with-output-string
          (lambda (p)
            (display "<table class=\"table-style\">" p)(newline p)
            ; write out header
@@ -259,7 +260,7 @@
  
  (define relativize-ngrams
    (lambda (ngrams)
-     (relativize-ngrams! ngrams (make-hashtable equal-hash equal?))))
+     (relativize-ngrams! ngrams (make-hash))))
  
  
  (define relativize-ngrams!
@@ -267,17 +268,17 @@
      [(from-ngrams) (relativize-ngrams! from-ngrams from-ngrams)]
      [(from-ngrams to-ngrams)
       (begin
-        (let-values (((keys values) (hashtable-entries from-ngrams)))
+        (let-values (((keys values) (hash-entries from-ngrams)))
           (let ([total-count (apply + (vector->list values))])
             (vector-map (lambda (key)
-                          (hashtable-set! to-ngrams key (/ (hashtable-ref from-ngrams key 0) total-count)))
+                          (hash-set! to-ngrams key (/ (hash-ref from-ngrams key 0) total-count)))
                         keys)))
         to-ngrams)]))
  
  
  (define ngram-counts
    (lambda (ngrams)
-     (let-values (((keys values) (hashtable-entries ngrams)))
+     (let-values (((keys values) (hash-entries ngrams)))
        (apply + (vector->list values)))))
  
  
@@ -286,7 +287,7 @@
      [(ngrams) (ngrams-sort ngrams #t)]
      [(ngrams decreasing) (ngrams-sort ngrams decreasing #t)]
      [(ngrams decreasing by-value)
-      (let-values ([(keys values) (hashtable-entries ngrams)])
+      (let-values ([(keys values) (hash-entries ngrams)])
         (let ([pick (if by-value
                         (lambda (elem)
                           (vector-ref elem 1))
@@ -302,12 +303,12 @@
                                        (if decreasing char>? char<?)]))]
                              [else
                               (if decreasing > <)])])
-          (vector-sort (lambda (a b)
-                         (compare (pick a) (pick b)))
-                       (vector-map
+          (vector-sort (vector-map
                         (lambda (key value)
                           (vector key value))
-                        keys values))))]))
+                        keys values)
+                       (lambda (a b)
+                         (compare (pick a) (pick b))))))]))
  
  
  (define frequency-profile-decreasing
@@ -334,7 +335,7 @@
  (define token-sequence->ngrams
    (case-lambda
      [(tokens)   (token-sequence->ngrams tokens 2)]
-     [(tokens n) (token-sequence->ngrams tokens n (make-hashtable equal-hash equal?))]
+     [(tokens n) (token-sequence->ngrams tokens n (make-hash))]
      [(tokens n ngrams)
       (begin
         (cond [(and (integer? n)
@@ -351,8 +352,8 @@
                              (lambda (index)
                                (let* ([rest-list (list-tail tokens index)]
                                       [n-gram    (list->vector (drop-right rest-list (- (length rest-list) n) ))])
-                                 (hashtable-set! ngrams n-gram
-                                                 (+ (hashtable-ref ngrams n-gram 0) 1))))
+                                 (hash-set! ngrams n-gram
+                                                 (+ (hash-ref ngrams n-gram 0) 1))))
                              (enum-list (- num-tokens (- n 1))))))]))])
         ngrams)]))
  
